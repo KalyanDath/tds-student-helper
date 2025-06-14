@@ -119,7 +119,7 @@ Test API via:
 
 ```bash
 curl -X POST http://localhost:8000/api -H "Content-Type: application/json" \
-    -d '{"question": "Explain histogram equalization", "image": null}'
+    -d '{"question": "Explain histogram equalization"}'
 ```
 
 ---
@@ -162,7 +162,7 @@ Then redeploy the project.
 POST /api
 {
   "question": "What is the formula for entropy?",
-  "image": null
+  "image": "Base64 Image Content Here"
 }
 ```
 
