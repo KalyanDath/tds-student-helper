@@ -179,6 +179,77 @@ Response:
   ]
 }
 ```
+## 🛠️ Design & Highlights
+
+### 🧠 Semantic QA Pipeline (FastAPI + Gemini + Embeddings)
+
+The backend (`index.py`) uses the following pipeline to answer student queries:
+
+1. **Text+Image Input Support**  
+   Accepts a question and optionally a base64-encoded image (e.g., a screenshot of a Discourse post or course slide).
+
+2. **Gemini Vision Integration**  
+   If an image is provided, it's passed to Google Gemini (`gemini-2.0-flash-lite`) for detailed captioning (describing objects, text, charts, etc.), which is then appended to the question before semantic search.
+
+3. **Embeddings + Semantic Search**  
+   - Loads `text-embedding-3-small` vectors (from `embeddings_final.npz`) generated from TDS course content and Discourse threads.
+   - Computes cosine similarity between the user’s query and all stored chunks to retrieve the top 10 most relevant passages.
+
+4. **LLM-Powered Answer Generation**  
+   Uses Gemini to synthesize a clear and helpful answer using the top chunks as context, controlled via a prompt in `system_prompt.txt`.
+
+5. **Smart Link Extraction**  
+   - Every chunk includes a `[Source](url)` or `[View Original Thread](url)` link.
+   - If a Discourse URL is missing a slug (`/t/176077`), it auto-corrects it using the cached `topic_ids_and_slugs.json`, transforming it into:  
+     `https://discourse.onlinedegree.iitm.ac.in/t/{slug}/176077`
+
+6. **Returns Clean JSON Output**  
+   ```json
+   {
+     "answer": "Here’s what entropy means...",
+     "links": [
+       { "url": "...", "text": "entropy measures the uncertainty..." }
+     ]
+   }
+   ```
+
+7. **Extras**  
+   - `debug_top_chunks.txt` logs the actual context used for each answer (for transparent debugging).
+   - `rate_limiter.py` applies safe exponential backoff and throttling for embedding/API limits.
+
+---
+
+### 🌐 Discourse Slug Scraper (`scrape_discourse_post.py`)
+
+To enable clickable URLs in answers and search-friendly URLs:
+
+- **Discourse API Querying**  
+  Scrapes pages of Discourse posts using a rich query:  
+  `#courses:tds-kb before:2025-04-14 after:2025-01-01 order:latest`
+
+- **Session Management**  
+  Reads and updates the `_forum_session` from `Set-Cookie` headers to keep scraping even if the session expires.
+
+- **Output: `topic_ids_and_slugs.json`**  
+  A dictionary that maps `topic_id` to its Discourse slug (like `"164277": "project-1-llm-based-automation-agent-discussion-thread-tds-jan-2025"`).
+
+- **Used Later To Fix Incomplete URLs**  
+  Ensures that thread links shown in answers are always in the correct format:
+  ```
+  https://discourse.onlinedegree.iitm.ac.in/t/{slug}/{topic_id}
+  ```
+
+---
+
+### 📄 Chunking Strategy
+
+The `create_embeddings.py` script applies intelligent chunking:
+
+- Markdown files are split using `semantic_text_splitter.MarkdownSplitter` to preserve headers and context.
+- A `[Source](url)` link is appended to **each chunk**, depending on the Markdown file location:
+  - `Markdowns/discourse_data/*` → Discourse post link (uses topic ID from `# Thread ...` line)
+  - `Markdowns/tds_data/*` → Static URL to original note on GitHub mirror site
+- This ensures **every chunk can be traced to its origin**, enabling link previews in the response.
 
 ---
 
