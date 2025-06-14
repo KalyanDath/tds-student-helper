@@ -1,0 +1,5 @@
+requests # For making HTTP requests
+beautifulsoup4 # For web scraping
+pillow # For image processing
+html2text # For converting HTML to plain text
+google-generativeai # For interacting with Google Generative AI
