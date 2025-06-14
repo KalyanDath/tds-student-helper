@@ -241,16 +241,40 @@ To enable clickable URLs in answers and search-friendly URLs:
 
 ---
 
-### 📄 Chunking Strategy
+## 📦 Chunking Strategy
 
-The `create_embeddings.py` script applies intelligent chunking:
+The app implements a robust strategy to chunk Markdown files (from TDS notes and Discourse posts) for semantic search:
 
-- Markdown files are split using `semantic_text_splitter.MarkdownSplitter` to preserve headers and context.
-- A `[Source](url)` link is appended to **each chunk**, depending on the Markdown file location:
-  - `Markdowns/discourse_data/*` → Discourse post link (uses topic ID from `# Thread ...` line)
-  - `Markdowns/tds_data/*` → Static URL to original note on GitHub mirror site
-- This ensures **every chunk can be traced to its origin**, enabling link previews in the response.
+### ✅ Highlights
 
+- **🧠 Semantic Markdown Splitting**  
+  Uses [`semantic_text_splitter`](https://pypi.org/project/semantic-text-splitter/) to split Markdown into coherent chunks of ~10,000 characters, preserving context better than naive splitting.
+
+- **🔗 Source URL Included in Every Chunk**  
+  Each chunk ends with a `[Source](...)` link that points to:
+  - The **original Discourse thread** (with topic slug and ID)
+  - The **TDS GitHub notebook** based on file name
+
+- **🔄 Discourse Slug Fixing Logic**  
+  Some Discourse links may only contain the thread ID (e.g., `/t/163247`). These are corrected to full URLs using a `topic_ids_and_slugs.json` map:
+  ```
+  https://discourse.onlinedegree.iitm.ac.in/t/163247
+     ⬇️
+  https://discourse.onlinedegree.iitm.ac.in/t/ga3-large-language-models-discussion-thread-tds-jan-2025/163247
+  ```
+
+- **📄 Chunk-Level Metadata**  
+  Each chunk stores its origin, allowing relevant preview links in the final API response.
+
+- **📈 Vector Embedding with OpenAI**  
+  - Chunks are vectorized using the `text-embedding-3-small` model from OpenAI.
+  - Embedding requests are rate-limited via a `RateLimiter` helper and retried on failure.
+
+- **💾 Output Format**  
+  Chunks and embeddings are stored as NumPy arrays in `content_embeddings.npz`:
+  ```python
+  np.savez("content_embeddings.npz", chunks=[...], embeddings=[...])
+  ```
 ---
 
 ## 📢 Credits
