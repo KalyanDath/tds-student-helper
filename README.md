@@ -219,7 +219,7 @@ The backend (`index.py`) uses the following pipeline to answer student queries:
 
 ---
 
-### 🌐 Discourse Slug Scraper (`scrape_discourse_post.py`)
+### 🌐 Discourse Scraper (`scrape_discourse_post.py`)
 
 To enable clickable URLs in answers and search-friendly URLs:
 
