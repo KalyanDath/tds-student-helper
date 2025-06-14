@@ -15,27 +15,33 @@ headers = {
     "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"
 }
 
-def get_chunks(file_path: str, chunk_size: int = 15000):
+def get_chunks(file_path: str, chunk_size: int = 10000):
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-    
-    splitter = MarkdownSplitter(chunk_size)
-    chunks = splitter.chunks(content)
 
     normalized_path = str(file_path).replace(os.sep, "/")
-    if "Markdown/discourse_data" in normalized_path:
+    print(normalized_path)
+    # Determine source URL based on file location
+    source_url = None
+    if "Markdowns/discourse_data" in normalized_path:
+        print(f"Processing Discourse data from {file_path}")
         match = re.search(r"# Thread (\d+)", content)
         topic_id = match.group(1) if match else None
         if topic_id:
-            topic_url = f"https://discourse.onlinedegree.iitm.ac.in/t/{topic_id}"
-            chunks = [f"{chunk}\n\n[Source]({topic_url})" for chunk in chunks]
+            source_url = f"https://discourse.onlinedegree.iitm.ac.in/t/{topic_id}"
         else:
-            print(f"⚠️  Could not find thread ID in {file_path}")  
-    elif "Markdown/tds_data" in normalized_path:
+            print(f"⚠️  Could not find thread ID in {file_path}")
+    elif "Markdowns/tds_data" in normalized_path:
         filename = Path(file_path).name
-        tds_url = f"https://tds.s-anand.net/#/{filename}"
-        chunks = [f"{chunk}\n\n[Source]({tds_url})" for chunk in chunks]
+        source_url = f"https://tds.s-anand.net/#/{filename}"
 
+    # Chunk the original content
+    splitter = MarkdownSplitter(chunk_size)
+    chunks = splitter.chunks(content)
+
+    # Append source URL to each chunk (if available)
+    if source_url:
+        chunks = [f"{chunk}\n\n[Source]({source_url})" for chunk in chunks]
 
     return chunks
 
@@ -108,7 +114,7 @@ if __name__ == "__main__":
                     continue
     
     # Save all the embeddings and chunks to a numpy archive file
-    np.savez("embeddings_final.npz", chunks=np.array(all_chunks), embeddings=np.array(all_embeddings))
+    np.savez("content_embeddings.npz", chunks=np.array(all_chunks), embeddings=np.array(all_embeddings))
     print("✅ Saved embeddings to embeddings.npz")
     print(f"\n✅ Finished embedding generation.")
     print(f"📄 Files processed: {len(files)}")
