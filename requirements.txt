@@ -1,6 +1,13 @@
 requests # For making HTTP requests
 beautifulsoup4 # For web scraping
-Pillow # For image processing
+pillow # For image processing
 html2text # For converting HTML to plain text
-google-generativeai # For interacting with Google Generative AI
 tqdm # For progress bars
+fastapi # For building APIs
+uvicorn # ASGI server for FastAPI
+httpx # For asynchronous HTTP requests
+numpy # For numerical operations
+markdownify # For converting HTML to Markdown
+semantic_text_splitter # For splitting text semantically
+google-genai # For Google Generative AI integration
+pydantic # For data validation and settings management
