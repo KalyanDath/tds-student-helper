@@ -27,7 +27,7 @@ def hash_url(url):
     return hashlib.md5(url.encode()).hexdigest()
 
 
-cache_file = "caption_cache.json"
+cache_file = "image_descriptions_cache.json"
 if os.path.exists(cache_file):
     with open(cache_file) as f:
         image_descriptions = json.load(f)
@@ -35,7 +35,7 @@ else:
     image_descriptions = {}
 
 # read prompt to send to gemini from a file
-prompt_file = "prompt.txt"
+prompt_file = "prompt_discourse.txt"
 if os.path.exists(prompt_file):
     with open(prompt_file, "r") as f:
         prompt = f.read().strip()

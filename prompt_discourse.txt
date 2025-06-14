@@ -1,0 +1,9 @@
+This image is from a student discussion forum post. It may contain screenshots of questions, code, outputs, errors, exams, evaluations, or casual inquiries. Your task is to write one detailed sentence describing what this image shows, focusing on what a human viewer would understand from it.
+
+If the image includes:
+- A question: explain what the question is about (e.g., topics like distance formula, Docker, machine learning, etc.).
+- Code or logs: mention the main issue or output shown (e.g., an error, result, or execution trace).
+- Evaluation screens or scores: describe the task being evaluated and its result.
+- Anything else: summarize it helpfully for someone who can’t see the image.
+
+Avoid saying “screenshot” or “image.” Write clearly, as if you're summarizing the content for search or documentation. Respond in **one complete sentence only**, without markdown or formatting.
