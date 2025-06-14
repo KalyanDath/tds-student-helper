@@ -58,7 +58,7 @@ def describe_image_with_gemini(image: Image.Image):
             contents=[uploaded_file, prompt]
         )
 
-        return response.text.strip()
+        return response.text.strip() if response.text is not None else "[Image]"
     
     except Exception as e:
         print(f"Error describing image with Gemini: {e}")
