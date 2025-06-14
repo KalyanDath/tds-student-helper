@@ -26,7 +26,7 @@ from fastapi import FastAPI,Request
 from pydantic import BaseModel
 import httpx
 from google import genai
-from google.genai.types import GenerateContentConfig, HttpOptions
+from google.genai.types import GenerateContentConfig
 from fastapi.middleware.cors import CORSMiddleware
 import time
 from typing import Optional
@@ -77,7 +77,7 @@ def get_image_description(base64_data_url: str):
     return response.text or ""
 
 def load_embeddings():
-    data = np.load("embeddings.npz", allow_pickle=True)
+    data = np.load("content_embeddings.npz", allow_pickle=True)
     return data["chunks"], data["embeddings"]
 
 def get_embedding(text: str, max_retries: int = 3) -> list[float]:
@@ -140,6 +140,9 @@ def generate_llm_response(question: str, context: str) -> str:
 
     return response.text or ""
 
+with open("topic_ids_and_slugs.json", "r") as f:
+    topic_slug_map = json.load(f)
+
 def extract_links_with_text(chunks: list[str]) -> list[dict]:
     """Extract [Source](url) links and provide context snippets."""
     link_pattern = re.compile(
@@ -153,15 +156,24 @@ def extract_links_with_text(chunks: list[str]) -> list[dict]:
         match = link_pattern.search(chunk)
         if match:
             url = match.group(2)
-            if url in seen_urls:
+            # Fix the URL if it's missing the slug (e.g., ends with /t/176077)
+            corrected_url = url
+            if re.match(r"https://discourse\.onlinedegree\.iitm\.ac\.in/t/\d+$", url):
+                topic_id = url.rstrip("/").split("/")[-1]
+                slug = topic_slug_map.get(topic_id)
+                if slug:
+                    corrected_url = f"https://discourse.onlinedegree.iitm.ac.in/t/{slug}/{topic_id}"
+
+            if corrected_url in seen_urls:
                 continue
-            seen_urls.add(url)
+            seen_urls.add(corrected_url)
             # Remove the link itself from the chunk to extract a clean text preview
             text_preview = re.sub(link_pattern, "", chunk)
             text_preview = re.sub(r"[#*_>`]", "", text_preview)  # Remove markdown characters
             text_preview = " ".join(text_preview.strip().split()[:20])
+
             links.append({
-                "url": url,
+                "url": corrected_url,
                 "text": text_preview + "..." if text_preview else "Referenced content"
             })
 
@@ -186,6 +198,13 @@ def answer(question: str, image: Optional[str] = None):
 
     # Get the top chunks
     top_chunks = [loaded_chunks[i] for i in top_indices]
+
+    with open("debug_top_chunks.txt", "w", encoding="utf-8") as debug_file:
+        debug_file.write("Question:\n" + question + "\n\n")
+        debug_file.write("Top 10 Matching Chunks:\n")
+        for i, chunk in enumerate(top_chunks, 1):
+            debug_file.write(f"--- Chunk {i} ---\n{chunk.strip()}\n\n")
+
 
     # Extract links with text from the top chunks
     links = extract_links_with_text(top_chunks)
