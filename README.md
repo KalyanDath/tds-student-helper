@@ -38,9 +38,8 @@ tds-student-helper/
 ├── prompt_tds.txt
 ├── content_embeddings.npz
 ├── Markdowns/
-│   ├── discourse/             # Processed Discourse threads
+│   ├── discourse_data/             # Processed Discourse threads
 │   └── tds_data/              # TDS notes from GitHub repo
-|   └── discourse_data         # Discourse Data from IITM Discourse Fourm
 ├── index.py                   # FastAPI backend
 ├── create_embeddings.py       # Create vector embeddings
 ├── scrape_discourse_topics.py # Scrape post slugs from Discourse
