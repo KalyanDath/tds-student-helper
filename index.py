@@ -51,29 +51,58 @@ headers = {
 }
 
 
-def get_image_description(base64_data_url: str):
-    # Parse the data URL: "data:image/png;base64,..."
-    match = re.match(r"data:(image/\w+);base64,(.+)", base64_data_url)
-    if not match:
-        raise ValueError("Invalid base64 image format")
-
-    mime_type, base64_data = match.groups()
-
-    # Decode the base64 data
-    image_data = base64.b64decode(base64_data)
-    image = BytesIO(image_data)
+import mimetypes
+from fastapi import UploadFile
+def get_image_description(image_input: str | UploadFile):
     client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-    print("Reached here")
-    my_file = client.files.upload(file=image,config={
-            "mime_type": mime_type
-        })
+
+    if isinstance(image_input, UploadFile):
+        # Case 1: FastAPI file upload
+        mime_type = image_input.content_type
+        image_data = image_input.file.read()
+
+    elif isinstance(image_input, str):
+        if image_input.startswith("file://"):
+            # Case 2: Local file path like "file://image.png"
+            file_path = image_input.replace("file://", "")
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}")
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if mime_type is None:
+                mime_type = "image/png"
+            with open(file_path, "rb") as f:
+                image_data = f.read()
+
+        elif image_input.startswith("data:image"):
+            # Case 3: data:image/png;base64,...
+            match = re.match(r"data:(image/\w+);base64,(.+)", image_input)
+            if not match:
+                raise ValueError("Invalid data URL format")
+            mime_type, base64_data = match.groups()
+            image_data = base64.b64decode(base64_data)
+
+        else:
+            try:
+                # Case 4: plain base64 string (no header)
+                image_data = base64.b64decode(image_input)
+                mime_type = "image/png"  # Fallback default
+            except Exception:
+                raise ValueError("Unrecognized image format or decoding failed")
+
+    else:
+        raise ValueError("Unsupported image input format")
+
+    # Upload image to Gemini and generate caption
+    image = BytesIO(image_data)
+    uploaded_file = client.files.upload(file=image, config={"mime_type": mime_type})
 
     response = client.models.generate_content(
-        model= "gemini-2.0-flash-lite",
-        contents=[my_file,
-                  "Describe the image in detail, including objects, actions, and context."]
+        model="gemini-2.0-flash-lite",
+        contents=[
+            uploaded_file,
+            "Describe the image in detail, including objects, actions, and context."
+        ]
     )
-
     return response.text or ""
 
 def load_embeddings():
@@ -199,17 +228,21 @@ def answer(question: str, image: Optional[str] = None):
     # Get the top chunks
     top_chunks = [loaded_chunks[i] for i in top_indices]
 
-    with open("debug_top_chunks.txt", "w", encoding="utf-8") as debug_file:
-        debug_file.write("Question:\n" + question + "\n\n")
-        debug_file.write("Top 10 Matching Chunks:\n")
-        for i, chunk in enumerate(top_chunks, 1):
-            debug_file.write(f"--- Chunk {i} ---\n{chunk.strip()}\n\n")
+    # with open("debug_top_chunks.txt", "w", encoding="utf-8") as debug_file:
+    #     debug_file.write("Question:\n" + question + "\n\n")
+    #     debug_file.write("Top 10 Matching Chunks:\n")
+    #     for i, chunk in enumerate(top_chunks, 1):
+    #         debug_file.write(f"--- Chunk {i} ---\n{chunk.strip()}\n\n")
 
 
     # Extract links with text from the top chunks
     links = extract_links_with_text(top_chunks)
 
     response = generate_llm_response(question, "\n".join(top_chunks))
+    print(response)
+    if response.lower().strip() == "i don't know":
+        links = []
+
     return{
         "answer": response,
         "links": links,
@@ -225,7 +258,94 @@ async def get_answer(request: Request):
     except Exception as e:
         print(f"Error processing request: {e}")
         return {"error": str(e)}
-    
+
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/api", response_class=HTMLResponse)
+async def api_usage():
+    return """
+    <html>
+    <head>
+        <title>TDS Virtual TA API</title>
+        <style>
+            body {
+                font-family: "Segoe UI", sans-serif;
+                max-width: 800px;
+                margin: auto;
+                padding: 2rem;
+                background-color: #ffffff;
+                color: #333333;
+            }
+            h1 {
+                color: #0070f3;
+            }
+            code {
+                background-color: #f2f2f2;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 95%;
+            }
+            pre {
+                background: #f4f4f4;
+                padding: 1rem;
+                border-radius: 8px;
+                overflow-x: auto;
+            }
+            a {
+                color: #0070f3;
+                text-decoration: none;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                body {
+                    background-color: #1e1e1e;
+                    color: #e4e4e4;
+                }
+                code {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                }
+                pre {
+                    background-color: #2d2d2d;
+                }
+                a {
+                    color: #66ccff;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>📘 TDS Virtual TA API</h1>
+        <p>
+            This API answers student questions from IITM BSc TDS using semantic search and image context via Gemini.
+        </p>
+        <h2>🔧 Usage</h2>
+        <p><strong>Endpoint:</strong> <code>/api</code></p>
+        <p><strong>Method:</strong> <code>POST</code></p>
+        <p><strong>Content-Type:</strong> <code>application/json</code></p>
+
+        <h2>📨 Request Body</h2>
+        <ul>
+            <li><code>question</code> (required): Your query as a string.</li>
+            <li><code>image</code> (optional): Base64-encoded image (data URL).</li>
+        </ul>
+
+        <h2>📌 Example</h2>
+        <pre>{
+    "question": "Explain histogram equalization"
+}</pre>
+
+        <h2>💻 Example cURL</h2>
+        <pre>curl -X POST http://localhost:8000/api \\
+  -H "Content-Type: application/json" \\
+  -d '{"question": "Explain histogram equalization"}'</pre>
+
+        <p><strong>Note:</strong> This page is shown only on a <code>GET</code> request. Use <code>POST</code> for actual queries.</p>
+    </body>
+    </html>
+    """
+
 
 if __name__ == "__main__":
     import uvicorn

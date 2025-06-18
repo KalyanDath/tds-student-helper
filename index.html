@@ -1,0 +1,62 @@
+<html>
+    <head>
+        <title>TDS Virtual TA API</title>
+        <style>
+            body {
+                font-family: "Segoe UI", sans-serif;
+                max-width: 800px;
+                margin: auto;
+                padding: 2rem;
+                background-color: #f9f9fb;
+                color: #333;
+            }
+            h1 {
+                color: #0070f3;
+            }
+            code {
+                background-color: #eee;
+                padding: 2px 4px;
+                border-radius: 4px;
+                font-size: 95%;
+            }
+            pre {
+                background: #f4f4f4;
+                padding: 1rem;
+                border-radius: 8px;
+                overflow-x: auto;
+            }
+            a {
+                color: #0070f3;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>📘 TDS Virtual TA API</h1>
+        <p>
+            This API answers student questions related to the IITM BSc Tools in Data Science course using semantic search and Gemini Vision.
+        </p>
+        <h2>🔧 Usage</h2>
+        <p><strong>Endpoint:</strong> <code>/api</code></p>
+        <p><strong>Method:</strong> <code>POST</code></p>
+        <p><strong>Content-Type:</strong> <code>application/json</code></p>
+
+        <h2>📨 Request Body</h2>
+        <ul>
+            <li><code>question</code> (required): Your query as a string.</li>
+            <li><code>image</code> (optional): Base64 encoded image (data URL).</li>
+        </ul>
+
+        <h2>📌 Example</h2>
+        <pre>{
+    "question": "Explain histogram equalization"
+}</pre>
+
+        <h2>💻 Example cURL</h2>
+        <pre>curl -X POST http://localhost:8000/api \\
+  -H "Content-Type: application/json" \\
+  -d '{"question": "Explain histogram equalization"}'</pre>
+
+        <p><strong>Note:</strong> This page is shown only on a <code>GET</code> request. To use the API, send a <code>POST</code> request to <code>/api</code>.</p>
+    </body>
+</html>
